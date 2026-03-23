@@ -37,8 +37,10 @@ Pay-per-second token streams. Ideal for payroll, subscriptions, or real-time con
 ### forge-multisig
 An N-of-M treasury requiring multiple owner approvals before funds move. Essential for DAO treasuries.
 
-* **Key Function:** `propose(proposer, to, token, amount)`
+* **Key Function:** `initialize(owners, threshold, timelock_delay)` - Sets up the multisig with unique owner addresses, approval threshold, and execution delay.
+* **Key Function:** `propose(proposer, to, token, amount)` - Creates a new transfer proposal.
 * **Action:** `execute(executor, proposal_id)` transfers funds only after the configured timelock.
+* **Behavior:** Duplicate owner addresses in `initialize()` are rejected with an error.
 
 ### forge-governor
 Token-weighted on-chain governance with configurable quorum and voting periods.

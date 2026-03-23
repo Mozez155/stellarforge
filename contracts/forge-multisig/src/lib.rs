@@ -65,6 +65,7 @@ pub enum MultisigError {
     InsufficientApprovals = 9,
     InvalidThreshold = 10,
     InvalidAmount = 11,
+    DuplicateOwners = 12,
 }
 
 // ── Contract ──────────────────────────────────────────────────────────────────
@@ -77,13 +78,14 @@ impl MultisigContract {
     /// Initialize the multisig treasury.
     ///
     /// # Parameters
-    /// - `owners`: List of owner addresses.
+    /// - `owners`: List of owner addresses. Must be unique.
     /// - `threshold`: Minimum approvals required (N-of-M).
     /// - `timelock_delay`: Seconds to wait after approval before execution.
     ///
     /// # Errors
     /// - `MultisigError::AlreadyInitialized` if already set up.
     /// - `MultisigError::InvalidThreshold` if threshold > owners count.
+    /// - `MultisigError::DuplicateOwners` if duplicate addresses in owners list.
     pub fn initialize(
         env: Env,
         owners: Vec<Address>,
@@ -95,6 +97,14 @@ impl MultisigContract {
         }
         if threshold == 0 || threshold > owners.len() {
             return Err(MultisigError::InvalidThreshold);
+        }
+        // Check for duplicate owners
+        let mut seen = Vec::new(&env);
+        for owner in owners.iter() {
+            if seen.contains(&owner) {
+                return Err(MultisigError::DuplicateOwners);
+            }
+            seen.push_back(owner);
         }
         env.storage().instance().set(&DataKey::Owners, &owners);
         env.storage()
@@ -348,6 +358,17 @@ mod tests {
         let owners = vec![&env, o1.clone()];
         let result = MultisigContract::initialize(env, owners, 5, 0);
         assert_eq!(result, Err(MultisigError::InvalidThreshold));
+    }
+
+    #[test]
+    fn test_duplicate_owners() {
+        let env = Env::default();
+        env.mock_all_auths();
+        env.register(MultisigContract, ());
+        let o1 = Address::generate(&env);
+        let owners = vec![&env, o1.clone(), o1.clone()];
+        let result = MultisigContract::initialize(env, owners, 2, 0);
+        assert_eq!(result, Err(MultisigError::DuplicateOwners));
     }
 
     #[test]
